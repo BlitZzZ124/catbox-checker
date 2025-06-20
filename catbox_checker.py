@@ -2,7 +2,6 @@ import asyncio
 import aiohttp
 import random
 import string
-import os
 from colorama import Fore, Style, init
 
 # Initialize colorama
@@ -24,7 +23,7 @@ CONCURRENCY = 20
 TOTAL_ATTEMPTS = 0  # 0 = infinite
 OUTPUT_FILE = "links.txt"
 MAX_RETRIES = 3
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
+WEBHOOK_URL = "YOUR_WEBHOOK_HERE"  # <- Replace this
 
 def print_banner():
     banner = r"""
@@ -107,30 +106,6 @@ async def main():
             url = f"https://files.catbox.moe/{filename}"
             asyncio.create_task(check_link(session, sem, url))
             await asyncio.sleep(0.05)  # small delay to reduce 503s
-
-from flask import Flask
-import threading
-import time
-
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "I'm alive!"
-
-def your_long_running_task():
-    while True:
-        # Your code goes here
-        print("Running task...")
-        time.sleep(60)  # Run this loop every 60 seconds
-
-if __name__ == "__main__":
-    thread = threading.Thread(target=your_long_running_task)
-    thread.daemon = True
-    thread.start()
-    app.run(host='0.0.0.0', port=3000)
-
-
 
 if __name__ == "__main__":
     asyncio.run(main())
