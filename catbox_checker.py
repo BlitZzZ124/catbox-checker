@@ -108,5 +108,29 @@ async def main():
             asyncio.create_task(check_link(session, sem, url))
             await asyncio.sleep(0.05)  # small delay to reduce 503s
 
+from flask import Flask
+import threading
+import time
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "I'm alive!"
+
+def your_long_running_task():
+    while True:
+        # Your code goes here
+        print("Running task...")
+        time.sleep(60)  # Run this loop every 60 seconds
+
+if __name__ == "__main__":
+    thread = threading.Thread(target=your_long_running_task)
+    thread.daemon = True
+    thread.start()
+    app.run(host='0.0.0.0', port=3000)
+
+
+
 if __name__ == "__main__":
     asyncio.run(main())
