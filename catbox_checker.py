@@ -2,6 +2,7 @@ import asyncio
 import aiohttp
 import random
 import string
+import os
 from colorama import Fore, Style, init
 
 # Initialize colorama
@@ -23,7 +24,7 @@ CONCURRENCY = 20
 TOTAL_ATTEMPTS = 0  # 0 = infinite
 OUTPUT_FILE = "links.txt"
 MAX_RETRIES = 3
-WEBHOOK_URL = "https://discordapp.com/api/webhooks/1385750525504393246/wQ2GKmHNrsEDuNCgHNsEuayfNuXjYtLHmA-zZVI8X3nYNI3-XcGAGbiHaQTpUr4gm32y"  # <- Replace this
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
 
 def print_banner():
     banner = r"""
