@@ -1,46 +1,50 @@
+from flask import Flask
+import threading
 import asyncio
+import time
 import aiohttp
 import random
 import string
+import os
 from colorama import Fore, Style, init
 
 # Initialize colorama
 init(autoreset=True)
 
-# Allowed file extensions
+# Your constants and async functions here
 ALLOWED_EXTENSIONS = [
-    ".mp4", ".png", ".jpg", ".jpeg", ".gif", ".webm", ".mp3",
-    ".pdf", ".txt", ".zip", ".rar", ".7z", ".wav", ".bmp", ".svg"
+    ".mp4", ".png", ".jpg", ".jpeg", ".gif", ".webm", ".mp3", ".pdf", ".txt",
+    ".zip", ".rar", ".7z", ".wav", ".bmp", ".svg"
 ]
 
-# Media extensions for preview
 IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".svg"]
 VIDEO_EXTENSIONS = [".mp4", ".webm"]
-DISALLOWED_EXTENSIONS = [".exe", ".scr", ".cpl", ".jar", ".doc", ".docx"]
 
-# Settings
-CONCURRENCY = 20
-TOTAL_ATTEMPTS = 0  # 0 = infinite
-OUTPUT_FILE = "links.txt"
 MAX_RETRIES = 3
-WEBHOOK_URL = "YOUR_WEBHOOK_HERE"  # <- Replace this
+CONCURRENCY = 20
+OUTPUT_FILE = "links.txt"
+TOTAL_ATTEMPTS = 0  # 0 = infinite
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
+
 
 def print_banner():
     banner = r"""
    ____      _   _                 
   / ___|__ _| |_| |__   ___  _ __  
  | |   / _` | __| '_ \ / _ \| '_ \ 
- | |__| (_| | |_| | | | (_) | | | |
+ | |__| (_| | |_| | | | | (_) | | | |
   \____\__,_|\__|_| |_|\___/|_| |_|
 
         Catbox Link Checker
     """
     print(Fore.CYAN + banner)
 
+
 def generate_random_filename():
     name = ''.join(random.choices(string.ascii_lowercase, k=6))
     ext = random.choice(ALLOWED_EXTENSIONS)
     return name + ext
+
 
 async def send_webhook(session, url):
     if not WEBHOOK_URL or WEBHOOK_URL == "YOUR_DISCORD_WEBHOOK_HERE":
@@ -53,7 +57,6 @@ async def send_webhook(session, url):
         "color": 0x00ff00
     }
 
-    # Add preview for images/videos
     if ext in IMAGE_EXTENSIONS:
         embed["image"] = {"url": url}
     elif ext in VIDEO_EXTENSIONS:
@@ -68,18 +71,26 @@ async def send_webhook(session, url):
     except Exception as e:
         print(f"{Fore.RED}[WEBHOOK ERROR] → {e}")
 
+
 async def check_link(session, sem, url):
     async with sem:
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                          "(KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
-            "Accept": "*/*",
+            "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+            "Accept":
+            "*/*",
         }
 
         for attempt in range(1, MAX_RETRIES + 1):
-            print(f"{Fore.YELLOW}[CHECKING]{Style.RESET_ALL} {url} (Attempt {attempt})")
+            print(
+                f"{Fore.YELLOW}[CHECKING]{Style.RESET_ALL} {url} (Attempt {attempt})"
+            )
             try:
-                async with session.get(url, headers=headers, timeout=10, allow_redirects=False) as resp:
+                async with session.get(url,
+                                       headers=headers,
+                                       timeout=10,
+                                       allow_redirects=False) as resp:
                     if resp.status == 200:
                         print(f"{Fore.GREEN}[VALID]   {url}")
                         with open(OUTPUT_FILE, "a") as f:
@@ -87,11 +98,14 @@ async def check_link(session, sem, url):
                         await send_webhook(session, url)
                         return
                     else:
-                        print(f"{Fore.RED}[INVALID] {url} (status: {resp.status})")
+                        print(
+                            f"{Fore.RED}[INVALID] {url} (status: {resp.status})"
+                        )
                         return
             except Exception as e:
                 print(f"{Fore.RED}[ERROR]   {url} → {e}")
                 await asyncio.sleep(0.5 * attempt)
+
 
 async def main():
     print_banner()
@@ -105,7 +119,25 @@ async def main():
             filename = generate_random_filename()
             url = f"https://files.catbox.moe/{filename}"
             asyncio.create_task(check_link(session, sem, url))
-            await asyncio.sleep(0.05)  # small delay to reduce 503s
+            await asyncio.sleep(0.05)
+
+
+# Flask app setup
+app = Flask(__name__)
+
+
+@app.route('/')
+def home():
+    return "I'm alive!"
+
+
+def start_async_loop():
+    asyncio.run(main())
+
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    # Start async task checker in a separate daemon thread
+    threading.Thread(target=start_async_loop, daemon=True).start()
+
+    # Start Flask web server on main thread
+    app.run(host='0.0.0.0', port=3000)
